@@ -58,7 +58,7 @@ def build_station_data(year:str, ret:Dict) -> Dict[str, Dict[datetime, Dict[str,
 
 def save_pickle(path, obj):
     path = Path(path)
-    if not path.exists():
+    if not path.parent.exists():
         path.parent.mkdir() 
     path.write_bytes(pickle.dumps(obj))
 
