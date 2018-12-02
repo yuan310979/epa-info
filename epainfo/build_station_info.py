@@ -19,7 +19,7 @@ def build_station_info():
 
 def save_pickle(path, obj):
     path = Path(path)
-    if not path.exists():
+    if not path.parent.exists():
         path.parent.mkdir() 
     path.write_bytes(pickle.dumps(obj))
 
