@@ -35,9 +35,9 @@ def build_station_data(year:str, ret:Dict) -> Dict[str, Dict[datetime, Dict[str,
             xls = pd.read_excel(p)
             for row in xls.iterrows():
                 if(isinstance(row[1][0], datetime)):
-                    date = datetime.strptime(str(row[1][0]), "%Y-%m-%d %H:%M:%S")
+                    date = datetime.strptime(str(row[1][0]), "%Y-%m-%d %H:%M:%S").date()
                 else:
-                    date = datetime.strptime(row[1][0], "%Y/%m/%d") 
+                    date = datetime.strptime(row[1][0], "%Y/%m/%d").date() 
                 key = row[1][2]
                 if(ret.get(station_name).get(date) == None):
                     ret[station_name][date] = {}
@@ -49,7 +49,7 @@ def build_station_data(year:str, ret:Dict) -> Dict[str, Dict[datetime, Dict[str,
                 ret[station_name] = {}
             csv = pd.read_csv(p, encoding='big5')
             for row in csv.iterrows():
-                date = datetime.strptime(row[1][0], "%Y/%m/%d") 
+                date = datetime.strptime(row[1][0], "%Y/%m/%d").date() 
                 key = row[1][2]
                 if(ret.get(station_name).get(date) == None):
                     ret[station_name][date] = {}
@@ -67,7 +67,7 @@ def load_pickle(path):
     return pickle.load(path.open('rb'))
 
 if __name__ == '__main__':
-    start_year = 106 
-    end_year = 106 
+    start_year = 104 
+    end_year = 104 
     d = build_station_data_by_year(start_year, end_year)
-    save_pickle('../pickle_data/epa-106.pickle', d)
+    save_pickle('../pickle_data/epa-104.pickle', d)

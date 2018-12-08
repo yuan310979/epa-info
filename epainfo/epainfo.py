@@ -1,7 +1,7 @@
 import pickle
 import re
 
-from math import sin, cos, sqrt, atan2, radians
+from math import sin, cos, sqrt, atan2, radians, degrees
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime, timedelta, date
@@ -31,27 +31,44 @@ class EPAInfo:
                 ret = k
         return ret
 
+    def get_direction_and_direction_to_station(self, st_name, lat, lon):
+        ret = []
+        st = self.station_data[st_name]
+        ret.append(self.bearing_direction(lat, lon, st['lat'], st['lon']))
+        ret.append(self.latlon_distance(lat, lon, st['lat'], st['lon']))
+        return ret
+
     def get_aqi_data_in_period(self, st_name, aqi_type, st_time, ed_time):
         aqi = ['CO', 'SO2', 'NO', 'NO2', 'NOx', 'O3', 'PM2.5', 'PM10']
+        st_date = st_time.date()
+        ed_date = ed_time.date()
+        st_hour = st_time.hour
+        ed_hour = ed_time.hour
         ret = [] 
         d = self.get_data_by_station_name(st_name)
         if aqi_type in aqi:
-            with tqdm(total=(ed_time-st_time)/timedelta(days=1)) as pbar:
-                while st_time != ed_time:
-                    pp(st_time)
+            with tqdm(total=(ed_date-st_date)/timedelta(days=1)) as pbar:
+                while st_date != ed_date + timedelta(days=1):
                     try:
-                        for i in d[st_time][aqi_type]:
+                        st_hour = 0
+                        ed_hour = 24
+                        if st_date == st_time.date():
+                            st_hour = st_time.hour+1
+                        if st_date == ed_time.date():
+                            ed_hour = ed_time.hour+1
+                        for t in range(st_hour, ed_hour):
+                            i = d[st_date][aqi_type][t]
                             if isinstance(i, int) or isinstance(i, float):
                                 ret.append(i)
                             elif(isinstance(i, str)):
                                 i = re.findall('[0-9]+[\.]{0,1}[0-9]*', i)[0]
-                                ret.append(i)
+                                ret.append(float(i))
                             else:
                                 print('[Error]\t(get_aqi_data_in_period) value error!')
                     except Exception as ex:
                         print(ex)
                     finally:
-                        st_time += timedelta(days=1)
+                        st_date += timedelta(days=1)
                         pbar.update(1)
             return ret
         else:
@@ -66,6 +83,14 @@ class EPAInfo:
         except:
             print(f"[Error]\t{s_name} is not exist!")
             return None
+
+    @staticmethod
+    def bearing_direction(lat1:float, lon1:float, lat2:float, lon2:float):
+        lat1, lon1, lat2, lon2 = radians(lat1), radians(lon1), radians(lat2), radians(lon2)
+        delta_lon = lon2 - lon1
+        X = cos(lat2) * sin(delta_lon)
+        Y = cos(lat1) * sin(lat2) - sin(lat1)*cos(lat2)*cos(delta_lon)
+        return degrees(atan2(X, Y))
 
     @staticmethod
     def latlon_distance(lat1:float, lon1:float, lat2:float, lon2:float) -> float:
@@ -83,11 +108,13 @@ class EPAInfo:
 
 if __name__ == "__main__":
     EPA = EPAInfo() 
+    b = EPA.bearing_direction(39.099912, -94.581213, 38.627089, -90.200203)
     EPA.load_station_data_from_pickle('../pickle_data/stations_info.pickle')
     EPA.load_aqi_data_from_pickle('../pickle_data/epa-104.pickle')
 
     st = EPA.get_nearest_station(24.32323, 121.456465)
     #  print(EPA.get_data_by_station_name(st))
-    #  print(st)
-    d = EPA.get_aqi_data_in_period(st, 'SO2', datetime(2015, 1, 1), datetime(2015, 2, 1))
+    print(st)
+    d = EPA.get_aqi_data_in_period(st, 'PM10', datetime(2015, 1, 1, 1, 0), datetime(2015, 1, 11, 3, 0))
     pp(d)
+    pp(len(d))
