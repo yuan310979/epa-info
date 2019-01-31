@@ -25,7 +25,6 @@ class IAQI:
                 val1 = self.IAQI_formula(*self.get_iaqi_params(self.O3, O3_hr))
             if O3_8hr <= self.O3_8hr[-3]:
                 val2 = self.IAQI_formula(*self.get_iaqi_params(self.O3_8hr, O3_8hr))
-            print(val1, val2)
             return val1 if val1 > val2 else val2
         elif target == "PM2.5":
             return self.IAQI_formula(*self.get_iaqi_params(self.PM25, args[0]))
