@@ -1,7 +1,7 @@
 import pickle
 import re
 
-from math import sin, cos, sqrt, atan2, radians, degrees
+from math import sin, cos, sqrt, atan2, radians, degrees, isnan
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime, timedelta, date
@@ -38,7 +38,7 @@ class EPAInfo:
         ret.append(self.latlon_distance(lat, lon, st['lat'], st['lon']))
         return ret
 
-    def get_aqi_data_in_period(self, st_name, aqi_type, st_time, ed_time):
+    def get_aqi_data_in_period(self, st_name, aqi_types, st_time, ed_time):
         aqi = ['CO', 'SO2', 'NO', 'NO2', 'NOx', 'O3', 'PM2.5', 'PM10']
         st_date = st_time.date()
         ed_date = ed_time.date()
@@ -46,33 +46,37 @@ class EPAInfo:
         ed_hour = ed_time.hour
         ret = [] 
         d = self.get_data_by_station_name(st_name)
-        if aqi_type in aqi:
-            with tqdm(total=(ed_date-st_date)/timedelta(days=1)) as pbar:
-                while st_date != ed_date + timedelta(days=1):
-                    try:
-                        st_hour = 0
-                        ed_hour = 24
-                        if st_date == st_time.date():
-                            st_hour = st_time.hour+1
-                        if st_date == ed_time.date():
-                            ed_hour = ed_time.hour+1
-                        for t in range(st_hour, ed_hour):
-                            i = d[st_date][aqi_type][t]
-                            if isinstance(i, int) or isinstance(i, float):
-                                ret.append(i)
-                            elif(isinstance(i, str)):
-                                i = re.findall('[0-9]+[\.]{0,1}[0-9]*', i)[0]
-                                ret.append(float(i))
-                            else:
-                                print('[Error]\t(get_aqi_data_in_period) value error!')
-                    except Exception as ex:
-                        print(ex)
-                    finally:
-                        st_date += timedelta(days=1)
-                        pbar.update(1)
-            return ret
-        else:
-            print('[Error]\t(get_aqi_data_in_period) type not found!')
+        prev_val = [0 for _ in range(len(aqi_types))] 
+        #  with tqdm(total=(ed_date-st_date)/timedelta(days=1)) as pbar:
+        while st_date != ed_date + timedelta(days=1):
+            try:
+                st_hour = 0
+                ed_hour = 24
+                if st_date == st_time.date():
+                    st_hour = st_time.hour+1
+                if st_date == ed_time.date():
+                    ed_hour = ed_time.hour+1
+                for t in range(st_hour, ed_hour):
+                    tmp = []
+                    for aqi_index, aqi_type in enumerate(aqi_types):
+                        i = d[st_date][aqi_type][t]
+                        if isinstance(i, int) or isinstance(i, float):
+                            if isnan(i):
+                                i = prev_val[aqi_index]
+                            tmp.append(i)
+                        elif isinstance(i, str):
+                            i = float(re.findall('[0-9]+[\.]{0,1}[0-9]*', i)[0])
+                            tmp.append(i)
+                        else:
+                            print('[Error]\t(get_aqi_data_in_period) value error!')
+                        prev_val[aqi_index] = i
+                    ret.append(tmp)
+            except Exception as ex:
+                raise Exception
+            finally:
+                st_date += timedelta(days=1)
+                    #  pbar.update(1)
+        return ret
 
     def get_stations(self):
         return self.station_data
@@ -115,6 +119,6 @@ if __name__ == "__main__":
     st = EPA.get_nearest_station(24.32323, 121.456465)
     #  print(EPA.get_data_by_station_name(st))
     print(st)
-    d = EPA.get_aqi_data_in_period(st, 'PM10', datetime(2015, 1, 1, 1, 0), datetime(2015, 1, 11, 3, 0))
+    d = EPA.get_aqi_data_in_period(st, ['PM2.5', 'SO2', 'PM10'], datetime(2015, 10, 1, 1, 0), datetime(2015, 10, 26, 2, 0))
     pp(d)
     pp(len(d))
