@@ -1,6 +1,7 @@
 import pickle
 import re
-import iaqi
+
+from . import iaqi
 
 from math import sin, cos, sqrt, atan2, radians, degrees, isnan
 from pathlib import Path
