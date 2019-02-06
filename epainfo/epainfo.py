@@ -53,7 +53,11 @@ class EPAInfo:
                     if isnan(i):
                         i = prev_val
                 elif isinstance(i, str):
-                    i = float(re.findall('[0-9]+[\.]{0,1}[0-9]*', i)[0])
+                    nums = re.findall('[0-9]+[\.]{0,1}[0-9]*', i)
+                    if len(nums) == 0:
+                        i = prev_val
+                    else:
+                        i = float(nums[0])
                 else:
                     i = prev_val
                 count += 1
@@ -67,7 +71,11 @@ class EPAInfo:
                 if isnan(i):
                     i = prev_val
             elif isinstance(i, str):
-                i = float(re.findall('[0-9]+[\.]{0,1}[0-9]*', i)[0])
+                nums = re.findall('[0-9]+[\.]{0,1}[0-9]*', i)
+                if len(nums) == 0:
+                    i = prev_val
+                else:
+                    i = float(nums[0])
             else:
                 i = prev_val
             sum += i
@@ -102,7 +110,11 @@ class EPAInfo:
                             if isnan(i):
                                 i = prev_val[aqi_index]
                         elif isinstance(i, str):
-                            i = float(re.findall('[0-9]+[\.]{0,1}[0-9]*', i)[0])
+                            nums = re.findall('[0-9]+[\.]{0,1}[0-9]*', i)
+                            if len(nums) == 0:
+                                i = prev_val[aqi_index]
+                            else:
+                                i = float(nums[0])
                         else:
                             print('[Error]\t(get_aqi_data_in_period) value error!')
                         
