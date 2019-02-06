@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from pprint import pprint as pp
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from itertools import chain
 # from tqdm import tqdm_notebook as tqdm
 from tqdm import tqdm
@@ -48,50 +48,69 @@ def build_station_data(year:str, ret:Dict) -> Dict[str, Dict[datetime, Dict[str,
     for _attr in attr:
         record[_attr] = [-1] * 24
 
-    _date = None
     target_path = sorted(dataset_path.glob(f'**/*.{ftype}'))
     if ftype == 'xls':
         for p in tqdm(target_path):
-            station_name = re.findall(r"年(.*)站", p.name)[0] 
+            year, station_name = re.findall(r"([0-9]+)年(.*)站", p.name)[0] 
+            # previous date point
+            prev_date = date(int(year)+1911,1,1) - timedelta(days=1)
+            # initialize station data
             if ret.get(station_name) == None:
                 ret[station_name] = {}
             xls = pd.read_excel(p)
+            
+            """
+            iterate each row.
+            if there is any date that are missing, fill in all -1 into station's data.
+            """
             for row in xls.iterrows():
-                date = None
+                curr_date = None
                 if(isinstance(row[1][0], datetime)):
-                    date = datetime.strptime(str(row[1][0]), "%Y-%m-%d %H:%M:%S").date()
+                    curr_date = datetime.strptime(str(row[1][0]), "%Y-%m-%d %H:%M:%S").date()
                 else:
-                    date = datetime.strptime(row[1][0], "%Y/%m/%d").date() 
-                if _date != date:
+                    curr_date = datetime.strptime(row[1][0], "%Y/%m/%d").date() 
+                if curr_date - prev_date > timedelta(days=1):
+                    while prev_date < curr_date - timedelta(days=1):
+                        #  print(prev_date, curr_date)
+                        prev_date += timedelta(days=1)
+                        record = {}
+                        for _attr in attr:
+                            record[_attr] = [-1] * 24
+                        ret[station_name][prev_date] = record
+                if prev_date != curr_date:
                     record = {}
                     for _attr in attr:
                         record[_attr] = [-1] * 24
                 key = row[1][2]
                 record[key] = list(row[1][3:])
-                ret[station_name][date] = record
-                #  if(ret.get(station_name).get(date) == None):
-                    #  ret[station_name][date] = {}
-                #  ret[station_name][date][key] = list(row[1][3:])
-                _date = date
+                ret[station_name][curr_date] = record
+                prev_date = curr_date
     elif ftype == 'csv':
         for p in tqdm(target_path):
-            station_name = re.findall(r"年(.*)站", p.name)[0] 
+            year, station_name = re.findall(r"([0-9]+)年(.*)站", p.name)[0] 
+            # previous date point
+            prev_date = date(int(year)+1911,1,1) - timedelta(days=1)
+            # initialize station data
             if ret.get(station_name) == None:
                 ret[station_name] = {}
             csv = pd.read_csv(p, encoding='big5')
             for row in csv.iterrows():
-                date = datetime.strptime(row[1][0], "%Y/%m/%d").date() 
-                key = row[1][2]
-                if _date != date:
+                curr_date = datetime.strptime(row[1][0], "%Y/%m/%d").date() 
+                if curr_date - prev_date > timedelta(days=1):
+                    while prev_date < curr_date - timedelta(days=1):
+                        prev_date += timedelta(days=1)
+                        record = {}
+                        for _attr in attr:
+                            record[_attr] = [-1] * 24
+                        ret[station_name][prev_date] = record
+                if prev_date != curr_date:
                     record = {}
                     for _attr in attr:
                         record[_attr] = [-1] * 24
-                #  if(ret.get(station_name).get(date) == None):
-                    #  ret[station_name][date] = {}
+                key = row[1][2]
                 record[key] = list(row[1][3:])
-                ret[station_name][date] = record
-                #  ret[station_name][date][key] = list(row[1][3:])
-                _date = date
+                ret[station_name][curr_date] = record
+                prev_date = curr_date
     return ret
 
 def save_pickle(path, obj):
