@@ -33,6 +33,11 @@ class EPAInfo:
                 ret = k
         return ret
 
+    def get_nearest_station_list(self, lat, lon):
+        dis = [ [k, self.latlon_distance(lat, lon, v['lat'], v['lon'])] for k, v in self.station_data.items() ]
+        dis.sort(key=lambda x: x[1])
+        return dis
+
     def get_direction_and_direction_to_station(self, st_name, lat, lon):
         ret = []
         st = self.station_data[st_name]
@@ -82,7 +87,8 @@ class EPAInfo:
             count += 1
         return sum / count 
 
-    def get_aqi_data_in_period(self, st_name, aqi_types, st_time, ed_time):
+    def get_aqi_data_in_period(self, st_list, aqi_types, st_time, ed_time):
+        # inital choose the nearest station
         aqi = ['CO', 'SO2', 'NO', 'NO2', 'NOx', 'O3', 'PM2.5', 'PM10']
         iaqi_type = ['CO', 'SO2', 'O3', 'NO2', 'PM2.5', 'PM10']
         st_date = st_time.date()
@@ -90,11 +96,12 @@ class EPAInfo:
         st_hour = st_time.hour
         ed_hour = ed_time.hour
         ret = [] 
-        d = self.get_data_by_station_name(st_name)
+        d = self.get_data_by_station_name(st_list[0][0])
         prev_val = [0 for _ in range(len(aqi_types))] 
         IAQI = iaqi.IAQI()
         #  with tqdm(total=(ed_date-st_date)/timedelta(days=1)) as pbar:
         while st_date != ed_date + timedelta(days=1):
+            st_index = 0
             try:
                 st_hour = 0
                 ed_hour = 24
@@ -105,6 +112,9 @@ class EPAInfo:
                 for t in range(st_hour, ed_hour):
                     tmp = []
                     for aqi_index, aqi_type in enumerate(aqi_types):
+                        while d.get(st_date) == None:
+                            st_index += 1
+                            d = self.get_data_by_station_name(st_list[st_index][0]) 
                         i = d[st_date][aqi_type][t]
                         if isinstance(i, int) or isinstance(i, float):
                             if isnan(i):
@@ -183,7 +193,7 @@ if __name__ == "__main__":
     EPA.load_station_data_from_pickle('../pickle_data/stations_info.pickle')
     EPA.load_aqi_data_from_pickle('../pickle_data/epa-104.pickle')
 
-    st = EPA.get_nearest_station(24.32323, 121.456465)
+    st = EPA.get_nearest_station_list(24.32323, 121.456465)
     #  print(EPA.get_data_by_station_name(st))
     print(st)
     d = EPA.get_aqi_data_in_period(st, ['PM2.5', 'SO2', 'PM10', 'CO', 'NO2', 'O3'], datetime(2015, 10, 1, 1, 0), datetime(2015, 10, 26, 2, 0))
