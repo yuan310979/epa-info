@@ -52,7 +52,15 @@ class EPAInfo:
         delta = delta - hour
         count = 0
         while delta > 0:
+            if data.get(date) == None:
+                continue
+            if data[date].get(aqi_type) == None:
+                continue
             for _t in range(0, ed_hour): 
+                if _t >= len(data[date][aqi_type]):
+                    print("[Error] access more than 24 hour.")
+                    exit()
+
                 i = data[date][aqi_type][_t]
                 if isinstance(i, int) or isinstance(i, float):
                     if isnan(i):
@@ -85,28 +93,56 @@ class EPAInfo:
                 i = prev_val
             sum += i
             count += 1
-        return sum / count 
 
-    def get_aqi_data_in_period(self, st_list, aqi_types, st_time, ed_time):
+        if count > 0:
+            return sum / count 
+        else:
+            return -1
+
+    def get_aqi_data_in_period(self, st_list, aqi_types, st_time, ed_time, rank=1):
+
+        # Parameter check
+        if rank < 1:
+            print("[Error] rank should not be less than 1.")
+            exit()
+        
+        if st_time > ed_time:
+            print("[Error] start time should not larger than ed_time.")
+            exit()
+
+        if len(st_list) < rank:
+            print("[Error] rank is larger than station list length.")
+
+        iaqi_types = ['CO', 'SO2', 'O3', 'NO2', 'PM2.5', 'PM10']
+        _aqi_types, _iaqi_types = set(aqi_types), set(iaqi_types)
+        if len(_aqi_types - _aqi_types) != 0:
+            for aqi in _aqi_types - _aqi_types:
+                print(f"[Error] {aqi} is not in iaqi predicted type.")
+
         # inital choose the nearest station
         aqi = ['CO', 'SO2', 'NO', 'NO2', 'NOx', 'O3', 'PM2.5', 'PM10']
-        iaqi_type = ['CO', 'SO2', 'O3', 'NO2', 'PM2.5', 'PM10']
-        st_date = st_time.date()
-        ed_date = ed_time.date()
-        st_hour = st_time.hour
-        ed_hour = ed_time.hour
+        st_date, ed_date = st_time.date(), ed_time.date()
+        st_hour, ed_hour = st_time.hour, ed_time.hour
+
         ret = [] 
-        d = self.get_data_by_station_name(st_list[0][0])
         prev_val = [0 for _ in range(len(aqi_types))] 
         IAQI = iaqi.IAQI()
-        #  with tqdm(total=(ed_date-st_date)/timedelta(days=1)) as pbar:
         while st_date != ed_date + timedelta(days=1):
-            st_index = 0
+            st_index, _rank = -1, 0 
+            while _rank != rank:
+                st_index += 1
+                d = self.get_data_by_station_name(st_list[st_index][0])
+                if d != None:
+                    _rank += 1
             try:
                 st_hour = 0
                 ed_hour = 24
+                # if it is on start_date, we should dedicate our start_hour to st_hour
+                # and then start from 1 
                 if st_date == st_time.date():
                     st_hour = st_time.hour+1
+                # if it is on the last day, we should dedicate our end_hour to ed_hour
+                # and before it, it will assign ed_hour to 25
                 if st_date == ed_time.date():
                     ed_hour = ed_time.hour+1
                 for t in range(st_hour, ed_hour):
@@ -152,7 +188,6 @@ class EPAInfo:
                 raise Exception
             finally:
                 st_date += timedelta(days=1)
-                    #  pbar.update(1)
         return ret
 
     def get_stations(self):
@@ -196,6 +231,11 @@ if __name__ == "__main__":
     st = EPA.get_nearest_station_list(24.32323, 121.456465)
     #  print(EPA.get_data_by_station_name(st))
     print(st)
-    d = EPA.get_aqi_data_in_period(st, ['PM2.5', 'SO2', 'PM10', 'CO', 'NO2', 'O3'], datetime(2015, 10, 1, 1, 0), datetime(2015, 10, 26, 2, 0))
-    pp(d)
-    pp(len(d))
+    import numpy as np
+    d1 = EPA.get_aqi_data_in_period(st, ['PM2.5', 'SO2', 'PM10', 'CO', 'NO2', 'O3'], datetime(2015, 10, 1, 1, 0), datetime(2015, 10, 1, 2, 0))
+    d1 = np.array(d1)
+    d2 = EPA.get_aqi_data_in_period(st, ['PM2.5', 'SO2', 'PM10', 'CO', 'NO2', 'O3'], datetime(2015, 10, 1, 1, 0), datetime(2015, 10, 1, 2, 0), 2)
+    d2 = np.array(d2)
+    d3 = EPA.get_aqi_data_in_period(st, ['PM2.5', 'SO2', 'PM10', 'CO', 'NO2', 'O3'], datetime(2015, 10, 1, 1, 0), datetime(2015, 10, 1, 2, 0), 3)
+    d3 = np.array(d3)
+    print((d1+d2+d3)/3)
