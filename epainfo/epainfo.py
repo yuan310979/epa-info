@@ -78,7 +78,23 @@ class EPAInfo:
             ed_hour = 24
             delta -= 24
             date -= timedelta(days=1)
+
+        if data.get(date) == None:
+            if count > 0:
+                return sum / count
+            else:
+                return 1
+
+        if data[date].get(aqi_type) == None:
+            if count > 0:
+                return sum / count
+            else:
+                return 1
+
         for _t in range(-delta, ed_hour):
+            if _t >= len(data[date][aqi_type]):
+                print("[Error] access more than 24 hour.")
+                exit()
             i = data[date][aqi_type][_t]
             if isinstance(i, int) or isinstance(i, float):
                 if isnan(i):
